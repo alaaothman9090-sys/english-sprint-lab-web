@@ -1,0 +1,41 @@
+name: Deploy verified preview
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Audit repository boundary and stamp deployment commit
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          for (const name of fs.readdirSync('.')) if (!['.git','.github','README.md','deployment.json','site'].includes(name)) throw new Error('Unexpected repository file: '+name);
+          const allowed = /^(?:(?:assets|packs|icons)\/[^/]+\.(?:js|css|woff2?|ttf|json|png|svg)|media\/(?:audio\/week-\d+\/[^/]+\.ogg|(?:peaks|timings)\/[^/]+\.json|manifest\.json)|(?:index|404)\.html|boot\.js|favicon\.svg|manifest\.webmanifest|registerSW\.js|sw\.js|workbox-[a-zA-Z0-9]+\.js|build-meta\.json|\.nojekyll)$/;
+          function walk(dir,prefix='') { for(const e of fs.readdirSync(dir,{withFileTypes:true})) { const rel=prefix+e.name; if(e.isSymbolicLink())throw new Error('Symlink'); if(e.isDirectory())walk(path.join(dir,e.name),rel+'/'); else if(!allowed.test(rel))throw new Error('Unexpected artifact: '+rel); } }
+          walk('site');
+          const meta=JSON.parse(fs.readFileSync('site/build-meta.json'));
+          if(meta.app!=='english-sprint-lab'||! /^[a-f0-9]{40}$/.test(meta.sourceCommit))throw new Error('Wrong project/commit');
+          meta.deploymentCommit=process.env.GITHUB_SHA;
+          fs.writeFileSync('site/build-meta.json',JSON.stringify(meta,null,2)+'\n');
+          NODE
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+      - uses: actions/deploy-pages@v4
+        id: deployment

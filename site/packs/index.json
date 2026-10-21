@@ -1,0 +1,22 @@
+{
+  "contentVersion": "f68c90999646",
+  "shared": "shared.bc395cc5b0.json",
+  "packs": [
+    {
+      "week": 1,
+      "file": "week-1.cc0c9df476.json",
+      "bytes": 110065,
+      "days": [
+        {
+          "day": 1,
+          "track": "support",
+          "title": {
+            "en": "Badge Day",
+            "ar": "يوم الكارت"
+          }
+        }
+      ]
+    }
+  ],
+  "builtAt": "2026-10-21T22:12:19.838Z"
+}
